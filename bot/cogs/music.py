@@ -235,7 +235,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     @wavelink.WavelinkMixin.listener()
     async def on_websocket_closed(self, node, payload):
         if payload.player.is_connected:
-            payload.player.teardown()
+            await payload.player.teardown()
 
     async def cog_check(self, ctx):
         if isinstance(ctx.channel, discord.DMChannel):
