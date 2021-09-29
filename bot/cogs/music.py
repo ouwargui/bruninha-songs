@@ -116,6 +116,7 @@ class Player(wavelink.Player):
 
         if isinstance(tracks, wavelink.TrackPlaylist):
             self.queue.add(*tracks.tracks)
+            await ctx.send(f"{len(tracks.tracks)} músicas foram adicionadas à fila.")
         elif len(tracks) == 1:
             self.queue.add(tracks[0])
             await ctx.send(f"{tracks[0].title} foi adicionada à fila.")
