@@ -37,6 +37,12 @@ class QueueIsEmpty(commands.CommandError):
 class NoTracksFound(commands.CommandError):
     pass
 
+class PlayerIsAlreadyPaused(commands.CommandError):
+    pass
+
+class PlayerIsAlreadyPlaying(commands.CommandError):
+    pass
+
 class Queue:
     def __init__(self):
         self._queue = []
@@ -268,13 +274,46 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             await player.connect(ctx)
 
         if query is None:
-            pass
+            if player.queue.is_empty:
+                raise QueueIsEmpty
+
+            await player.set_pause(False)
+            await ctx.send("Música resumida ▶️")
         else:
             query = query.strip("<>")
             if not re.match(URL_REGEX, query):
                 query = f"ytsearch:{query}"
 
             await player.add_tracks(ctx, await self.wavelink.get_tracks(query))
+
+    @play_command.error
+    async def play_command_error(self, ctx, exc):
+        if isinstance(exc, PlayerIsAlreadyPlaying):
+            await ctx.send("A música já está tocando.")
+        elif isinstance(exc, QueueIsEmpty):
+            await ctx.send("A fila está vazia.")
+
+    @commands.command(name="pause")
+    async def pause_command(self, ctx):
+        player = self.get_player(ctx)
+
+        if player.is_paused:
+            raise PlayerIsAlreadyPaused
+
+        await player.set_pause(True)
+        await ctx.send("Música pausada ⏸️")
+
+    @pause_command.error
+    async def pause_command_error(self, ctx, exc):
+        if isinstance(exc, PlayerIsAlreadyPaused):
+            await ctx.send("A música já está pausada.")
+
+    @commands.command(name="stop")
+    async def stop_command(self, ctx):
+        player = self.get_player(ctx)
+        player.queue.empty()
+        await player.stop()
+        await ctx.send("Reprodução parada.")
 
     @commands.command(name="search")
     async def search_command(self, ctx, *, query):
@@ -300,7 +339,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         if player.queue.is_empty:
             raise QueueIsEmpty
 
-        description = f"Mostrando a próxima música" if (player.queue.length -1) == 1 else f"Mostrando as próximas {player.queue.length - 1} músicas"
+        description = f"Mostrando a próxima música" if (len(player.queue.upcoming)) == 1 else f"Mostrando as próximas {len(player.queue.upcoming)} músicas"
 
         embed = discord.Embed(
             title="Fila",
@@ -310,7 +349,11 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         )
         embed.set_author(name="Resultados da pesquisa")
         embed.set_footer(text=f"Pesquisado por {ctx.author.display_name}", icon_url=ctx.author.avatar_url)
-        embed.add_field(name="Tocando agora", value=player.queue.current_track.title, inline=False)
+        embed.add_field(
+            name="Tocando agora",
+            value=getattr(player.queue.current_track, "title", "Não tem nenhuma música tocando no momento."),
+            inline=False
+        )
         if upcoming := player.queue.upcoming:
             embed.add_field(
                 name="Próximas músicas",
