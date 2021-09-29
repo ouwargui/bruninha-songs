@@ -1,8 +1,12 @@
+import re
 import typing as t
 
 import discord
 import wavelink
 from discord.ext import commands
+
+
+URL_REGEX = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
 
 class AlreadyConnectedToChannel(commands.CommandError):
     pass
@@ -10,9 +14,42 @@ class AlreadyConnectedToChannel(commands.CommandError):
 class NoVoiceChannel(commands.CommandError):
     pass
 
+class QueueIsEmpty(commands.CommandError):
+    pass
+
+class NoTracksFound(commands.CommandError):
+    pass
+
+class Queue:
+    def __init__(self):
+        self._queue = []
+        self.position = 0
+
+    def add(self, *args):
+        self._queue.extend(args)
+
+    @property
+    def first_track(self):
+        if not self._queue:
+            raise QueueIsEmpty
+
+        return self._queue[0]
+
+    def get_next_track(self):
+        if not self._queue:
+            raise QueueIsEmpty
+        
+        self.position += 1
+
+        if self.position > len(self._queue) - 1:
+            return None
+
+        return self._queue[self.position]
+
 class Player(wavelink.Player):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.queue = Queue()
 
     async def connect(self, ctx, channel=None):
         if self.is_connected:
@@ -28,6 +65,31 @@ class Player(wavelink.Player):
         try:
             await self.destroy()
         except KeyError:
+            pass
+
+    async def add_tracks(self, ctx, tracks):
+        if not tracks:
+            raise NoTracksFound
+
+        if isinstance(tracks, wavelink.TrackPlaylist):
+            self.queue.add(*tracks.tracks)
+        elif len(tracks) == 1:
+            self.queue.add(tracks[0])
+            await ctx.send(f"{tracks[0].title} foi adicionada à fila.")
+        else:
+            pass
+
+        if not self.is_playing:
+            await self.start_playback()
+
+    async def start_playback(self):
+        await self.play(self.queue.first_track)
+
+    async def advance(self):
+        try:
+            if (track := self.queue.get_next_track()) is not None:
+                await self.play(track)
+        except QueueIsEmpty:
             pass
 
 class Music(commands.Cog, wavelink.WavelinkMixin):
@@ -46,6 +108,12 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     async def on_node_ready(self, node):
         print(f"Nódulo wavelink '{node.identifier}' pronto.")
 
+    @wavelink.WavelinkMixin.listener("on_track_stuck")
+    @wavelink.WavelinkMixin.listener("on_track_end")
+    @wavelink.WavelinkMixin.listener("on_track_exception")
+    async def on_player_stop(self, node, payload):
+        await payload.player.advance()
+
     async def cog_check(self, ctx):
         if isinstance(ctx.channel, discord.DMChannel):
             await ctx.send("Comandos de música não estão disponíveis em DMs")
@@ -60,7 +128,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             "MAIN": {
                 "host": "127.0.0.1",
                 "port": 2333,
-                "rest_uri": "https://127.0.0.1:2333",
+                "rest_uri": "http://127.0.0.1:2333",
                 "password": "youshallnotpass",
                 "identifier": "MAIN",
                 "region": "brazil"
@@ -94,6 +162,22 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         player = self.get_player(ctx)
         await player.teardown()
         await ctx.send("Desconectado.")
+
+    @commands.command(name="play")
+    async def play_command(self, ctx, *, query: t.Optional[str]):
+        player = self.get_player(ctx)
+        
+        if not player.is_connected:
+            await player.connect(ctx)
+
+        if query is None:
+            pass
+        else:
+            query = query.strip("<>")
+            if not re.match(URL_REGEX, query):
+                query = f"ytsearch:{query}"
+
+            await player.add_tracks(ctx, await self.wavelink.get_tracks(query))
 
 def setup(bot):
     bot.add_cog(Music(bot))
