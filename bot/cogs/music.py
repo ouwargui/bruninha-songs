@@ -40,15 +40,40 @@ class Queue:
     def is_empty(self):
         return not self._queue
 
-    def add(self, *args):
-        self._queue.extend(args)
-
     @property
     def first_track(self):
         if not self._queue:
             raise QueueIsEmpty
 
         return self._queue[0]
+
+    @property
+    def current_track(self):
+        if not self._queue:
+            raise QueueIsEmpty
+
+        return self._queue[self.position]
+
+    @property
+    def upcoming(self):
+        if not self._queue:
+            raise QueueIsEmpty
+
+        return self._queue[self.position + 1:]
+
+    @property
+    def history(self):
+        if not self._queue:
+            raise QueueIsEmpty
+
+        return self._queue[:self.position]
+
+    @property
+    def length(self):
+        return len(self._queue)
+
+    def add(self, *args):
+        self._queue.extend(args)
 
     def get_next_track(self):
         if not self._queue:
@@ -60,6 +85,9 @@ class Queue:
             return None
 
         return self._queue[self.position]
+
+    def empty(self):
+        self._queue.clear()
 
 class Player(wavelink.Player):
     def __init__(self, *args, **kwargs):
@@ -101,10 +129,10 @@ class Player(wavelink.Player):
     async def search_tracks(self, ctx, tracks):
         if not tracks:
             raise NoTracksFound
-        
+
         if (track := await self.choose_track(ctx, tracks)) is not None:
             self.queue.add(track)
-            await ctx.send(f"{tracks[0].title} foi adiciona à fila.")
+            await ctx.send(f"{track.title} foi adiciona à fila.")
 
         if not self.is_playing and not self.queue.is_empty:
             await self.start_playback()
@@ -249,6 +277,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             await player.connect(ctx)
 
         if query is None:
+            await ctx.send("Você precisa passar pelo menos um parâmetro para a busca.")
             raise NoTracksFound
         else:
             query = query.strip("<>")
@@ -256,6 +285,38 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
                 query = f"ytsearch:{query}"
 
             await player.search_tracks(ctx, await self.wavelink.get_tracks(query))
+
+    @commands.command(name="queue")
+    async def queue_command(self, ctx, show: t.Optional[int] = 10):
+        player = self.get_player(ctx)
+
+        if player.queue.is_empty:
+            raise QueueIsEmpty
+
+        description = f"Mostrando a próxima música" if (player.queue.length -1) == 1 else f"Mostrando as próximas {player.queue.length - 1} músicas"
+
+        embed = discord.Embed(
+            title="Fila",
+            description=description,
+            colour=ctx.author.colour,
+            timestamp=dt.datetime.utcnow()
+        )
+        embed.set_author(name="Resultados da pesquisa")
+        embed.set_footer(text=f"Pesquisado por {ctx.author.display_name}", icon_url=ctx.author.avatar_url)
+        embed.add_field(name="Tocando agora", value=player.queue.current_track.title, inline=False)
+        if upcoming := player.queue.upcoming:
+            embed.add_field(
+                name="Próximas músicas",
+                value="\n".join(t.title for t in upcoming[:show]),
+                inline=False
+            )
+
+        msg = await ctx.send(embed=embed)
+
+    @queue_command.error
+    async def queue_command_error(self, ctx, exc):
+        if isinstance(exc, QueueIsEmpty):
+            await ctx.send("A fila está vazia.")
 
 def setup(bot):
     bot.add_cog(Music(bot))
