@@ -1,14 +1,21 @@
 import asyncio
 import datetime as dt
+import os
 import re
 import typing as t
 
 import discord
-from discord import colour
-from discord import embeds
 import wavelink
+from discord import colour, embeds
 from discord.ext import commands
+from dotenv import load_dotenv
 
+load_dotenv()
+
+HEROKU_HOST = os.environ.get('HEROKU_HOST')
+HEROKU_URI = os.environ.get('HEROKU_URI')
+PASSWORD = os.environ.get('PASSWORD')
+PORT = os.environ.get('PORT')
 
 URL_REGEX = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
 OPTIONS = {
@@ -217,10 +224,10 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
         nodes = {
             "MAIN": {
-                "host": "bruninha-songs-lavalink.herokuapp.com",
-                "port": 80,
-                "rest_uri": "https://bruninha-songs-lavalink.herokuapp.com",
-                "password": "youshallnotpass",
+                "host": HEROKU_HOST,
+                "port": PORT,
+                "rest_uri": HEROKU_URI,
+                "password": PASSWORD,
                 "identifier": "MAIN",
                 "region": "brazil"
             }
