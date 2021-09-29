@@ -14,8 +14,7 @@ load_dotenv()
 
 HEROKU_HOST = os.environ.get('HEROKU_HOST')
 HEROKU_URI = os.environ.get('HEROKU_URI')
-PASSWORD = os.environ.get('PASSWORD')
-PORT = os.environ.get('PORT')
+PASSWORD = os.environ.get('HEROKU_HOST')
 
 URL_REGEX = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
 OPTIONS = {
@@ -224,10 +223,10 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
 
         nodes = {
             "MAIN": {
-                "host": HEROKU_HOST,
-                "port": PORT,
-                "rest_uri": HEROKU_URI,
-                "password": PASSWORD,
+                "host": "bruninha-songs-lavalink.herokuapp.com",
+                "port": 80,
+                "rest_uri": "https://bruninha-songs-lavalink.herokuapp.com",
+                "password": "youshallnotpass",
                 "identifier": "MAIN",
                 "region": "brazil"
             }
