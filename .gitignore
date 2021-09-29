@@ -1,0 +1,4 @@
+jdk-13.0.2/
+.env
+*/__pycache__/
+.vscode/
