@@ -1,6 +1,7 @@
 import asyncio
 import datetime as dt
 import os
+import random
 import re
 import typing as t
 
@@ -102,6 +103,15 @@ class Queue:
             return None
 
         return self._queue[self.position]
+
+    def shuffle(self):
+        if not self._queue:
+            raise QueueIsEmpty
+
+        upcoming = self.upcoming
+        random.shuffle(upcoming)
+        self._queue = self._queue[:self.position + 1]
+        self._queue.extend(upcoming)
 
     def empty(self):
         self._queue.clear()
@@ -221,6 +231,11 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     @wavelink.WavelinkMixin.listener("on_track_exception")
     async def on_player_stop(self, node, payload):
         await payload.player.advance()
+    
+    @wavelink.WavelinkMixin.listener()
+    async def on_websocket_closed(self, node, payload):
+        if payload.player.is_connected:
+            payload.player.teardown()
 
     async def cog_check(self, ctx):
         if isinstance(ctx.channel, discord.DMChannel):
@@ -354,6 +369,17 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
             ctx.send("Não foi possível voltar a música, pois a fila está vazia.")
         elif isinstance(exc, NoPreviousTracks):
             ctx.send("Não há músicas anteriores na fila.")
+
+    @commands.command(name="shuffle", aliases=["random"])
+    async def shuffle_command(self, ctx):
+        player = self.get_player(ctx)
+        player.queue.shuffle()
+        await ctx.send("Fila embaralhada.")
+
+    @shuffle_command.error
+    async def shuffle_command_error(self, ctx, exc):
+        if isinstance(exc, QueueIsEmpty):
+            await ctx.send("A fila está vazia.")
 
     @commands.command(name="search")
     async def search_command(self, ctx, *, query):
