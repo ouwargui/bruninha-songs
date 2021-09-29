@@ -6,7 +6,6 @@ import typing as t
 
 import discord
 import wavelink
-from discord import colour, embeds
 from discord.ext import commands
 from dotenv import load_dotenv
 
@@ -41,6 +40,12 @@ class PlayerIsAlreadyPaused(commands.CommandError):
     pass
 
 class PlayerIsAlreadyPlaying(commands.CommandError):
+    pass
+
+class NoMoreTracks(commands.CommandError):
+    pass
+
+class NoPreviousTracks(commands.CommandError):
     pass
 
 class Queue:
@@ -314,6 +319,41 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
         player.queue.empty()
         await player.stop()
         await ctx.send("Reprodução parada.")
+
+    @commands.command(name="next", aliases=["skip"])
+    async def next_command(self, ctx):
+        player = self.get_player(ctx)
+
+        if not player.queue.upcoming:
+            raise NoMoreTracks
+
+        await player.stop()
+        await ctx.send("Tocando a próxima música da fila.")
+
+    @next_command.error
+    async def next_command_error(self, ctx, exc):
+        if isinstance(exc, QueueIsEmpty):
+            ctx.send("Não foi possível pular a música, pois a fila está vazia.")
+        elif isinstance(exc, NoMoreTracks):
+            ctx.send("Não há mais músicas na fila.")
+
+    @commands.command(name="previous")
+    async def previous_command(self, ctx):
+        player = self.get_player(ctx)
+
+        if not player.queue.history:
+            raise NoPreviousTracks
+
+        player.queue.position -= 2
+        await player.stop()
+        await ctx.send("Tocando a música anterior.")
+
+    @previous_command.error
+    async def previous_command_error(self, ctx, exc):
+        if isinstance(exc, QueueIsEmpty):
+            ctx.send("Não foi possível voltar a música, pois a fila está vazia.")
+        elif isinstance(exc, NoPreviousTracks):
+            ctx.send("Não há músicas anteriores na fila.")
 
     @commands.command(name="search")
     async def search_command(self, ctx, *, query):
