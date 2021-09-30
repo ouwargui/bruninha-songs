@@ -152,7 +152,7 @@ class Player(wavelink.Player):
             await ctx.send(f"{tracks[0].title} foi adicionada à fila.")
 
         if not self.is_playing and not self.queue.is_empty:
-            await self.start_playback()
+            await self.start_playback(ctx)
 
     async def search_tracks(self, ctx, tracks):
         if not tracks:
@@ -163,7 +163,7 @@ class Player(wavelink.Player):
             await ctx.send(f"{track.title} foi adiciona à fila.")
 
         if not self.is_playing and not self.queue.is_empty:
-            await self.start_playback()
+            await self.start_playback(ctx)
 
     async def choose_track(self, ctx, tracks):
         def _check(r, u):
@@ -200,7 +200,8 @@ class Player(wavelink.Player):
             await msg.delete()
             return tracks[OPTIONS[reaction.emoji]]
 
-    async def start_playback(self):
+    async def start_playback(self, ctx):
+        await ctx.send(f"{self.queue.current_track.title} está tocando agora.")
         await self.play(self.queue.current_track)
 
     async def advance(self):
