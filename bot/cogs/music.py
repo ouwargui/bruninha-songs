@@ -208,7 +208,7 @@ class Player(wavelink.Player):
         try:
             if (track := self.queue.get_next_track()) is not None:
                 await self.play(track)
-                await bot.get_channel(775975665928765450).send(f"{self.queue.current_track.title} está tocando agora.")
+                await bot.get_channel(775975665928765450).send(f"{self.queue.current_track.title} está tocando agora.\n{self.queue.current_track.uri}")
 
         except QueueIsEmpty:
             pass
