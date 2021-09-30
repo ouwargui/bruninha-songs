@@ -204,10 +204,12 @@ class Player(wavelink.Player):
         await ctx.send(f"{self.queue.current_track.title} está tocando agora.")
         await self.play(self.queue.current_track)
 
-    async def advance(self):
+    async def advance(self, bot):
         try:
             if (track := self.queue.get_next_track()) is not None:
                 await self.play(track)
+                await bot.get_channel(775975665928765450).send(f"{self.queue.current_track.title} está tocando agora.")
+
         except QueueIsEmpty:
             pass
 
@@ -231,7 +233,7 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     @wavelink.WavelinkMixin.listener("on_track_end")
     @wavelink.WavelinkMixin.listener("on_track_exception")
     async def on_player_stop(self, node, payload):
-        await payload.player.advance()
+        await payload.player.advance(payload.player.bot)
     
     @wavelink.WavelinkMixin.listener()
     async def on_websocket_closed(self, node, payload):
