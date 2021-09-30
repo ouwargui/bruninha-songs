@@ -200,9 +200,8 @@ class Player(wavelink.Player):
             await msg.delete()
             return tracks[OPTIONS[reaction.emoji]]
 
-    async def start_playback(self, ctx):
+    async def start_playback(self):
         await self.play(self.queue.current_track)
-        await ctx.send(f"{self.queue.current_track.title} tocando agora.")
 
     async def advance(self):
         try:
@@ -232,6 +231,11 @@ class Music(commands.Cog, wavelink.WavelinkMixin):
     @wavelink.WavelinkMixin.listener("on_track_exception")
     async def on_player_stop(self, node, payload):
         await payload.player.advance()
+    
+    @wavelink.WavelinkMixin.listener()
+    async def on_websocket_closed(self, node, payload):
+        if node.is_available:
+            await payload.player.teardown()
 
     async def cog_check(self, ctx):
         if isinstance(ctx.channel, discord.DMChannel):
