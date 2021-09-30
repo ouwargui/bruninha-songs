@@ -201,7 +201,7 @@ class Player(wavelink.Player):
             return tracks[OPTIONS[reaction.emoji]]
 
     async def start_playback(self, ctx):
-        await ctx.send(f"{self.queue.current_track.title} está tocando agora.")
+        await ctx.send(f"{self.queue.current_track.title} está tocando agora.\n{self.queue.current_track.uri}")
         await self.play(self.queue.current_track)
 
     async def advance(self, bot):
